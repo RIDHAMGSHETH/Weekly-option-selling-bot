@@ -1,0 +1,2 @@
+Timestamp,Date,Day,Mode,Nifty_Spot,Short_CE,CE_Entry,CE_Exit,CE_Status,Short_PE,PE_Entry,PE_Exit,PE_Status,Hedge_Wings,Gross_Points,Net_PnL_Rs,Exit_Reason
+2026-09-13 12:19:56,2026-09-13,Sunday,PAPER,24500.0,24650,48.0,18.0,DECAYED,24350,45.0,16.0,DECAYED,24750CE / 24250PE,55.0,4045.0,SCHEDULED_1330_EXIT

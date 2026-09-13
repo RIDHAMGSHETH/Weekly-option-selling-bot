@@ -44,11 +44,11 @@ class Nifty0DTEBot:
         print(f"\n{'='*70}")
         print(f"   NIFTY 0-DTE QUANT TRADING BOT INITIALIZED [{self.mode} MODE]")
         print(f"{'='*70}")
-        print(f"• Active Capital    : ₹55,000 / lot")
-        print(f"• Lot Size          : {self.config['lot_size']} (Lots: {self.config['lots']})")
-        print(f"• Strategy Window   : {self.config['entry_time']} AM -> {self.config['square_off_time']} PM")
-        print(f"• Risk Rules        : 25% SL per leg | Trailing Cost Lock | +₹3k Target Lock")
-        print(f"• Telegram Alerts   : {'CONNECTED' if self.alerter.enabled else 'DISABLED'}")
+        print(f"[*] Active Capital    : Rs 55,000 / lot")
+        print(f"[*] Lot Size          : {self.config['lot_size']} (Lots: {self.config['lots']})")
+        print(f"[*] Strategy Window   : {self.config['entry_time']} AM -> {self.config['square_off_time']} PM")
+        print(f"[*] Risk Rules        : 25% SL per leg | Trailing Cost Lock | +Rs 3k Target Lock")
+        print(f"[*] Telegram Alerts   : {'CONNECTED' if self.alerter.enabled else 'DISABLED'}")
         print(f"{'='*70}\n")
         
         # Notify startup
@@ -116,10 +116,10 @@ class Nifty0DTEBot:
             "entry_time": datetime.now().strftime("%H:%M:%S")
         }
         
-        print(f"\n[+] Basket Executed at Spot ₹{spot_price:,.1f}:")
-        print(f"    - SELL {short_ce} CE @ ₹{ce_price:.2f} (SL: ₹{ce_sl:.2f})")
-        print(f"    - SELL {short_pe} PE @ ₹{pe_price:.2f} (SL: ₹{pe_sl:.2f})")
-        print(f"    - BUY  {wing_ce} CE & {wing_pe} PE (Wings @ ~₹{wing_ce_px+wing_pe_px:.1f})")
+        print(f"\n[+] Basket Executed at Spot Rs {spot_price:,.1f}:")
+        print(f"    - SELL {short_ce} CE @ Rs {ce_price:.2f} (SL: Rs {ce_sl:.2f})")
+        print(f"    - SELL {short_pe} PE @ Rs {pe_price:.2f} (SL: Rs {pe_sl:.2f})")
+        print(f"    - BUY  {wing_ce} CE & {wing_pe} PE (Wings @ ~Rs {wing_ce_px+wing_pe_px:.1f})")
         print(f"    - Net Premium Credit: +{net_credit:.2f} pts\n")
         
         self.alerter.send_basket_entry(
@@ -174,8 +174,8 @@ class Nifty0DTEBot:
         current_pnl_rs = pts * self.config["lot_size"] * self.config["lots"]
         
         if current_pnl_rs >= self.config["profit_target_rs"]:
-            print(f"[🎯] Target Profit Milestone (+₹{current_pnl_rs:,.2f}) Hit! Squaring off early.")
-            self.square_off(ce_cur_exit, pe_cur_exit, reason="TARGET_PROFIT_LOCK (+₹3,000)")
+            print(f"[TARGET] Target Profit Milestone (+Rs {current_pnl_rs:,.2f}) Hit! Squaring off early.")
+            self.square_off(ce_cur_exit, pe_cur_exit, reason="TARGET_PROFIT_LOCK (+Rs 3,000)")
 
     def square_off(self, final_ce_price, final_pe_price, reason="SCHEDULED_1330_EXIT"):
         if not self.active_position:
@@ -229,7 +229,7 @@ class Nifty0DTEBot:
             cumulative_pnl=self.cumulative_pnl
         )
         
-        print(f"\n[🏁] Session Closed | Net PnL: ₹{net_pnl:+,.2f} | Reason: {reason}\n")
+        print(f"\n[DONE] Session Closed | Net PnL: Rs {net_pnl:+,.2f} | Reason: {reason}\n")
         self.active_position = None
         return trade_record
 
