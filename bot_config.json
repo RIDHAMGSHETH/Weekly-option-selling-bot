@@ -1,0 +1,16 @@
+{
+    "trading_mode": "PAPER",
+    "symbol": "NIFTY",
+    "lot_size": 75,
+    "lots": 1,
+    "entry_time": "09:25",
+    "square_off_time": "13:30",
+    "hard_cutoff_time": "15:15",
+    "otm_percent": 0.006,
+    "wing_percent": 0.010,
+    "stop_loss_pct": 0.25,
+    "profit_target_rs": 3000.0,
+    "trail_winning_leg_to_cost": true,
+    "allowed_expiry_days": ["Tuesday", "Thursday", "Wednesday"],
+    "telegram_notifications": true
+}
