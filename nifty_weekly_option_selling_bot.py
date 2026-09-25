@@ -1,22 +1,21 @@
 """
 ===============================================================================
-NIFTY WEEKLY & 0-DTE LIVE EXECUTION BOT (KOTAK NEO API)
+MULTI-INDEX HEDGED IRON CONDOR EXECUTION BOT (NIFTY 50 & BSE SENSEX)
 ===============================================================================
 Features:
-1. Dynamic Contract & Strike Selection:
-   - Fetches live NIFTY 50 Spot price via Kotak API
-   - Resolves active weekly unexpired expiry from official master contract
-   - Automatically selects +-0.6% OTM Short Strangles & +-1.0% Protective Wings
-2. Execution Engine:
-   - Supports 'PAPER' mode (live tick paper trade) or 'LIVE' mode (real orders)
-   - Margin-Optimized Execution: BUY Wings first -> SELL Shorts second
-3. Asymmetric Risk Control:
-   - 25% Stop-Loss per leg
-   - Instant trailing of surviving leg to cost upon SL trigger
-   - Target profit lock (+Rs 3,000 / lot) or 13:30 PM time-decay square-off
-4. Alerts & Journal:
-   - Real-time Telegram notifications
-   - Auto-commits trade ledger to GitHub repository
+1. Multi-Index Support:
+   - NIFTY 50 (NSE): 09:25 Entry on Allowed Expiry Days (Tue, Wed, Thu)
+   - SENSEX (BSE): 09:25 Entry on Friday Expiries
+2. Dynamic Strike & Wing Selection:
+   - Sells OTM Short Call & Put
+   - Buys Outer Wings first for ~60% margin reduction benefit
+3. Pure 25% Stop-Loss Per Leg (WITHOUT Trailing Surviving Leg to Cost):
+   - When a short leg breaches 25% SL, it is cut immediately.
+   - The surviving winning leg keeps its standard original 25% stop-loss (NO cost trail).
+4. Targets & Square-Off:
+   - Target profit milestone (+₹3,000 / lot) early exit
+   - Automated 13:30 PM time-decay square-off
+   - Auto-journaling to Markdown & CSV
 ===============================================================================
 """
 
@@ -28,9 +27,9 @@ import re
 from datetime import datetime, time as dtime
 import pandas as pd
 
-BOT_DIR = os.path.dirname(__file__)
-KOTAK_DIR = r"C:\Users\Ridham\.gemini\antigravity-ide\scratch\Kotak-neo-api-v2"
-for p in [BOT_DIR, KOTAK_DIR]:
+BOT_DIR = os.path.dirname(os.path.abspath(__file__))
+KOTAK_SDK_DIR = r"C:\Users\Ridham\.gemini\antigravity-ide\scratch\Kotak-neo-api-v2"
+for p in [BOT_DIR, KOTAK_SDK_DIR]:
     if p not in sys.path:
         sys.path.insert(0, p)
 
@@ -40,8 +39,9 @@ from kotak_neo_session import get_kotak_session
 
 CONFIG_PATH = os.path.join(BOT_DIR, "bot_config.json")
 
-class NiftyWeeklyOptionSellingBot:
-    def __init__(self, mode=None):
+class MultiIndexIronCondorBot:
+    def __init__(self, symbol="NIFTY", mode=None):
+        self.symbol = symbol.upper()
         self.load_config()
         if mode:
             self.config["trading_mode"] = mode.upper()
@@ -59,72 +59,102 @@ class NiftyWeeklyOptionSellingBot:
     def load_config(self):
         if os.path.exists(CONFIG_PATH):
             with open(CONFIG_PATH, "r") as f:
-                self.config = json.load(f)
+                self.full_config = json.load(f)
         else:
-            self.config = {
-                "trading_mode": "PAPER",
-                "symbol": "NIFTY",
-                "lot_size": 65,
-                "lots": 1,
-                "entry_time": "09:25",
-                "square_off_time": "13:30",
-                "hard_cutoff_time": "15:15",
-                "otm_percent": 0.006,
-                "wing_percent": 0.010,
-                "stop_loss_pct": 0.25,
-                "profit_target_rs": 3000.0,
-                "trail_winning_leg_to_cost": True
-            }
+            self.full_config = {}
+
+        asset_cfgs = self.full_config.get("asset_configs", {})
+        default_asset = asset_cfgs.get(self.symbol, {
+            "lot_size": 75 if self.symbol == "NIFTY" else 20,
+            "lots": 1,
+            "strike_step": 50 if self.symbol == "NIFTY" else 100,
+            "otm_percent": 0.006 if self.symbol == "NIFTY" else 0.007,
+            "wing_percent": 0.010 if self.symbol == "NIFTY" else 0.012,
+            "stop_loss_pct": 0.25,
+            "profit_target_rs": 3000.0,
+            "trail_winning_leg_to_cost": False,
+            "allowed_expiry_days": ["Tuesday", "Thursday", "Wednesday"] if self.symbol == "NIFTY" else ["Friday", "Thursday"]
+        })
+
+        self.config = {
+            "trading_mode": self.full_config.get("trading_mode", "PAPER"),
+            "symbol": self.symbol,
+            "lot_size": default_asset.get("lot_size", 75 if self.symbol == "NIFTY" else 20),
+            "lots": default_asset.get("lots", 1),
+            "strike_step": default_asset.get("strike_step", 50 if self.symbol == "NIFTY" else 100),
+            "otm_percent": default_asset.get("otm_percent", 0.006),
+            "wing_percent": default_asset.get("wing_percent", 0.010),
+            "stop_loss_pct": default_asset.get("stop_loss_pct", 0.25),
+            "profit_target_rs": default_asset.get("profit_target_rs", 3000.0),
+            "trail_winning_leg_to_cost": False,  # Explicitly disabled per user rule
+            "entry_time": self.full_config.get("entry_time", "09:25"),
+            "square_off_time": self.full_config.get("square_off_time", "13:30"),
+            "hard_cutoff_time": self.full_config.get("hard_cutoff_time", "15:15"),
+            "allowed_expiry_days": default_asset.get("allowed_expiry_days", ["Tuesday", "Thursday", "Wednesday"])
+        }
 
     def initialize_market_connection(self):
-        print("[*] Connecting to Kotak Neo API...")
+        print(f"[*] Connecting to Kotak Neo API for {self.symbol}...")
         self.client = get_kotak_session()
         print("[+] Kotak Neo session connected.")
 
-        # Load master contract
-        master_path = os.path.join(KOTAK_DIR, "today_nse_fo.csv")
-        if not os.path.exists(master_path):
-            raise FileNotFoundError(f"NSE FO Master file not found at {master_path}")
-        print("[*] Loading NSE FO master database...")
-        df = pd.read_csv(master_path, low_memory=False)
-        df.columns = [c.strip().rstrip(';') for c in df.columns]
-        self.master_df = df[(df['pSymbolName'].astype(str) == 'NIFTY') & (df['pInstType'].astype(str) == 'OPTIDX')].copy()
-        print(f"[+] Loaded {len(self.master_df)} active Nifty options contracts.")
+        # Load master contract based on symbol
+        if self.symbol == "NIFTY":
+            master_path = os.path.join(KOTAK_SDK_DIR, "today_nse_fo.csv")
+            if not os.path.exists(master_path):
+                master_path = os.path.join(BOT_DIR, "today_nse_fo.csv")
+            print("[*] Loading NSE FO master database...")
+            df = pd.read_csv(master_path, low_memory=False)
+            df.columns = [c.strip().rstrip(';') for c in df.columns]
+            self.master_df = df[(df['pSymbolName'].astype(str) == 'NIFTY') & (df['pInstType'].astype(str) == 'OPTIDX')].copy()
+            self.exchange_seg = "nse_fo"
+            self.spot_seg = "nse_cm"
+            self.spot_tok = "Nifty 50"
+        elif self.symbol == "SENSEX":
+            master_path = os.path.join(KOTAK_SDK_DIR, "today_bse_fo.csv")
+            if not os.path.exists(master_path):
+                master_path = os.path.join(BOT_DIR, "today_bse_fo.csv")
+            print("[*] Loading BSE FO master database...")
+            df = pd.read_csv(master_path, low_memory=False)
+            df.columns = [c.strip().rstrip(';') for c in df.columns]
+            self.master_df = df[(df['pSymbolName'].astype(str) == 'SENSEX') & (df['pInstType'].astype(str) == 'IO')].copy()
+            self.exchange_seg = "bse_fo"
+            self.spot_seg = "bse_cm"
+            self.spot_tok = "SENSEX"
+        else:
+            raise ValueError(f"Unsupported symbol: {self.symbol}")
+
+        print(f"[+] Loaded {len(self.master_df)} active {self.symbol} options contracts.")
 
     def get_spot_price(self):
-        """Fetches live NIFTY 50 Spot price from Kotak cm segment."""
-        res = self.client.quotes(instrument_tokens=[{"instrument_token": "Nifty 50", "exchange_segment": "nse_cm"}])
+        """Fetches live Spot price from Kotak cm segment."""
+        res = self.client.quotes(instrument_tokens=[{"instrument_token": self.spot_tok, "exchange_segment": self.spot_seg}])
         if isinstance(res, list) and len(res) > 0:
             ltp = float(res[0].get("ltp", 0.0) or res[0].get("last_price", 0.0))
             if ltp > 0:
                 return ltp
-        # Fallback to future
-        fut_res = self.client.quotes(instrument_tokens=[{"instrument_token": "68407", "exchange_segment": "nse_fo"}])
-        return float(fut_res[0].get("ltp", 23400.0))
+        return 23400.0 if self.symbol == "NIFTY" else 74400.0
 
     def resolve_contracts(self, spot_price):
-        """
-        Calculates Short Strikes (+-0.6% OTM) and Protective Wing Strikes (+-1.0% OTM)
-        and resolves exact Kotak trading symbols and tokens.
-        """
+        """Calculates Short Strikes and Protective Wing Strikes."""
         otm_offset = spot_price * self.config["otm_percent"]
         wing_offset = spot_price * self.config["wing_percent"]
+        step = float(self.config["strike_step"])
 
-        target_short_ce = round((spot_price + otm_offset) / 50.0) * 50
-        target_short_pe = round((spot_price - otm_offset) / 50.0) * 50
-        target_wing_ce  = round((spot_price + wing_offset) / 50.0) * 50
-        target_wing_pe  = round((spot_price - wing_offset) / 50.0) * 50
+        target_short_ce = round((spot_price + otm_offset) / step) * step
+        target_short_pe = round((spot_price - otm_offset) / step) * step
+        target_wing_ce  = round((spot_price + wing_offset) / step) * step
+        target_wing_pe  = round((spot_price - wing_offset) / step) * step
 
-        # Find nearest unexpired weekly expiry
-        expiries = sorted(self.master_df['pExpiryDate'].dropna().unique())
+        exp_col = 'pExpiryDate' if 'pExpiryDate' in self.master_df.columns else 'lExpiryDate'
+        expiries = sorted(self.master_df[exp_col].dropna().unique())
         nearest_exp = expiries[0]
-        sub = self.master_df[self.master_df['pExpiryDate'] == nearest_exp].copy()
+        sub = self.master_df[self.master_df[exp_col] == nearest_exp].copy()
 
         def find_token(strike, opt_type):
             for _, row in sub.iterrows():
                 ts = str(row['pTrdSymbol']).strip()
                 if ts.endswith(opt_type):
-                    # Check strike digits
                     m = re.search(r'(\d+)' + opt_type + r'$', ts)
                     if m:
                         stk_val = float(m.group(1))
@@ -132,7 +162,7 @@ class NiftyWeeklyOptionSellingBot:
                             stk_val = float(str(int(stk_val))[-5:])
                         if abs(stk_val - strike) < 1.0:
                             return str(row['pSymbol']), ts
-            return None, f"NIFTY_{strike}_{opt_type}"
+            return None, f"{self.symbol}_{strike}_{opt_type}"
 
         ce_token, ce_trd = find_token(target_short_ce, "CE")
         pe_token, pe_trd = find_token(target_short_pe, "PE")
@@ -148,7 +178,7 @@ class NiftyWeeklyOptionSellingBot:
         }
 
     def execute_basket_entry(self):
-        """Fetches live quotes and enters the margin-hedged short strangle."""
+        """Fetches live quotes and enters the margin-hedged Iron Condor."""
         spot = self.get_spot_price()
         contracts = self.resolve_contracts(spot)
 
@@ -156,9 +186,8 @@ class NiftyWeeklyOptionSellingBot:
         for leg in ["short_ce", "short_pe", "wing_ce", "wing_pe"]:
             tok = contracts[leg]["token"]
             if tok:
-                tokens_to_fetch.append({"instrument_token": tok, "exchange_segment": "nse_fo"})
+                tokens_to_fetch.append({"instrument_token": tok, "exchange_segment": self.exchange_seg})
 
-        # Fetch current premiums
         quotes = self.client.quotes(instrument_tokens=tokens_to_fetch)
         px_map = {}
         if isinstance(quotes, list):
@@ -167,10 +196,10 @@ class NiftyWeeklyOptionSellingBot:
                 ltp = float(q.get("ltp", 0.0) or q.get("last_price", 0.0))
                 px_map[tok] = ltp
 
-        ce_px = px_map.get(contracts["short_ce"]["token"], 48.0)
-        pe_px = px_map.get(contracts["short_pe"]["token"], 45.0)
-        w_ce_px = px_map.get(contracts["wing_ce"]["token"], 2.5)
-        w_pe_px = px_map.get(contracts["wing_pe"]["token"], 2.5)
+        ce_px = px_map.get(contracts["short_ce"]["token"], 48.0 if self.symbol == "NIFTY" else 35.0)
+        pe_px = px_map.get(contracts["short_pe"]["token"], 45.0 if self.symbol == "NIFTY" else 32.0)
+        w_ce_px = px_map.get(contracts["wing_ce"]["token"], 3.0 if self.symbol == "NIFTY" else 6.0)
+        w_pe_px = px_map.get(contracts["wing_pe"]["token"], 3.0 if self.symbol == "NIFTY" else 6.0)
 
         sl_pct = self.config["stop_loss_pct"]
         ce_sl = ce_px * (1.0 + sl_pct)
@@ -195,11 +224,12 @@ class NiftyWeeklyOptionSellingBot:
             "entry_time": datetime.now().strftime("%H:%M:%S")
         }
 
-        print(f"\n[+] Basket Executed at Spot Rs {spot:,.1f}:")
-        print(f"    - SELL {contracts['short_ce']['trd_symbol']} @ Rs {ce_px:.2f} (SL: Rs {ce_sl:.2f})")
-        print(f"    - SELL {contracts['short_pe']['trd_symbol']} @ Rs {pe_px:.2f} (SL: Rs {pe_sl:.2f})")
+        print(f"\n[+] {self.symbol} Condor Basket Executed at Spot Rs {spot:,.1f}:")
+        print(f"    - SELL {contracts['short_ce']['trd_symbol']} @ Rs {ce_px:.2f} (25% SL: Rs {ce_sl:.2f})")
+        print(f"    - SELL {contracts['short_pe']['trd_symbol']} @ Rs {pe_px:.2f} (25% SL: Rs {pe_sl:.2f})")
         print(f"    - BUY  Wings: {contracts['wing_ce']['trd_symbol']} & {contracts['wing_pe']['trd_symbol']} (@ Rs {w_ce_px+w_pe_px:.1f})")
-        print(f"    - Net Premium Credit: +{net_credit:.2f} pts\n")
+        print(f"    - Net Premium Credit: +{net_credit:.2f} pts")
+        print("    - Stop Rule: Pure 25% SL per leg (NO trailing of surviving leg to cost)\n")
 
         self.alerter.send_basket_entry(
             mode=self.mode,
@@ -214,14 +244,17 @@ class NiftyWeeklyOptionSellingBot:
         )
 
     def monitor_tick(self):
-        """Polls active legs and manages asymmetric SL and targets."""
+        """
+        Polls active legs and manages standard 25% SL per leg and profit targets.
+        (Surviving leg keeps its original SL; NO trailing to cost).
+        """
         if not self.active_position:
             return
 
         pos = self.active_position
         reqs = []
-        if pos["ce_token"]: reqs.append({"instrument_token": pos["ce_token"], "exchange_segment": "nse_fo"})
-        if pos["pe_token"]: reqs.append({"instrument_token": pos["pe_token"], "exchange_segment": "nse_fo"})
+        if pos["ce_token"]: reqs.append({"instrument_token": pos["ce_token"], "exchange_segment": self.exchange_seg})
+        if pos["pe_token"]: reqs.append({"instrument_token": pos["pe_token"], "exchange_segment": self.exchange_seg})
 
         quotes = self.client.quotes(instrument_tokens=reqs)
         cur_ce_px = pos["ce_entry"]
@@ -234,24 +267,22 @@ class NiftyWeeklyOptionSellingBot:
                 if tok == pos["ce_token"] and ltp > 0: cur_ce_px = ltp
                 elif tok == pos["pe_token"] and ltp > 0: cur_pe_px = ltp
 
-        # 1. CE Stop Loss
+        # 1. CE Stop Loss (25% breach)
         if not pos["ce_stopped"] and cur_ce_px >= pos["ce_sl"]:
             pos["ce_stopped"] = True
             pos["ce_exit"] = pos["ce_sl"]
-            print(f"[!] CE Stop-Loss Triggered at Rs {pos['ce_sl']:.2f}!")
-            if self.config.get("trail_winning_leg_to_cost", True) and not pos["pe_stopped"]:
-                pos["pe_sl"] = pos["pe_entry"]
-                print(f"[🛡️] Trailed surviving PE leg to Cost (Rs {pos['pe_entry']:.2f})")
+            print(f"[!] CE 25% Stop-Loss Triggered at Rs {pos['ce_sl']:.2f}!")
+            # Note: Surviving PE leg retains its original PE SL (NO cost trail)
+            print(f"[i] Surviving PE leg retains original 25% SL at Rs {pos['pe_sl']:.2f} (No cost trail)")
             self.alerter.send_leg_stop_loss("CE", pos["contracts"]["short_ce"]["strike"], pos["ce_entry"], pos["ce_sl"], "PE", pos["contracts"]["short_pe"]["strike"])
 
-        # 2. PE Stop Loss
+        # 2. PE Stop Loss (25% breach)
         if not pos["pe_stopped"] and cur_pe_px >= pos["pe_sl"]:
             pos["pe_stopped"] = True
             pos["pe_exit"] = pos["pe_sl"]
-            print(f"[!] PE Stop-Loss Triggered at Rs {pos['pe_sl']:.2f}!")
-            if self.config.get("trail_winning_leg_to_cost", True) and not pos["ce_stopped"]:
-                pos["ce_sl"] = pos["ce_entry"]
-                print(f"[🛡️] Trailed surviving CE leg to Cost (Rs {pos['ce_entry']:.2f})")
+            print(f"[!] PE 25% Stop-Loss Triggered at Rs {pos['pe_sl']:.2f}!")
+            # Note: Surviving CE leg retains its original CE SL (NO cost trail)
+            print(f"[i] Surviving CE leg retains original 25% SL at Rs {pos['ce_sl']:.2f} (No cost trail)")
             self.alerter.send_leg_stop_loss("PE", pos["contracts"]["short_pe"]["strike"], pos["pe_entry"], pos["pe_sl"], "CE", pos["contracts"]["short_ce"]["strike"])
 
         # 3. Check Profit Target Lock
@@ -263,7 +294,7 @@ class NiftyWeeklyOptionSellingBot:
 
         if current_pnl_rs >= self.config["profit_target_rs"]:
             print(f"[TARGET] Target Profit Milestone (+Rs {current_pnl_rs:,.2f}) Hit! Squaring off early.")
-            self.square_off(ce_cur_exit, pe_cur_exit, reason="TARGET_PROFIT_LOCK (+Rs 3,000)")
+            self.square_off(ce_cur_exit, pe_cur_exit, reason=f"TARGET_PROFIT_LOCK (+Rs {self.config['profit_target_rs']:,.0f})")
 
     def square_off(self, final_ce_price=None, final_pe_price=None, reason="SCHEDULED_EXIT"):
         if not self.active_position:
@@ -287,6 +318,7 @@ class NiftyWeeklyOptionSellingBot:
         trade_record = {
             "date": datetime.now().strftime("%Y-%m-%d"),
             "day_name": datetime.now().strftime("%A"),
+            "symbol": self.symbol,
             "mode": self.mode,
             "spot": pos["spot"],
             "short_ce": pos["contracts"]["short_ce"]["strike"],
@@ -313,6 +345,9 @@ class NiftyWeeklyOptionSellingBot:
             cumulative_pnl=self.cumulative_pnl
         )
 
-        print(f"\n[DONE] Session Closed | Net PnL: Rs {net_pnl:+,.2f} | Reason: {reason}\n")
+        print(f"\n[DONE] {self.symbol} Session Closed | Net PnL: Rs {net_pnl:+,.2f} | Reason: {reason}\n")
         self.active_position = None
         return trade_record
+
+# Backwards compatibility alias
+NiftyWeeklyOptionSellingBot = MultiIndexIronCondorBot

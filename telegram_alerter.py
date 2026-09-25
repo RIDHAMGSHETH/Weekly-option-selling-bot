@@ -81,7 +81,7 @@ class TelegramAlerter:
             f"• <b>Leg Cut:</b> {strike} {stopped_leg}\n"
             f"• <b>Entry:</b> ₹{entry_px:.2f} ➔ <b>Exit:</b> ₹{exit_px:.2f} (-{loss_pts:.2f} pts)\n"
             f"• <b>Surviving Leg:</b> {surviving_stk} {surviving_leg}\n"
-            f"• <b>Action Taken:</b> 🛡️ <i>Trailed surviving {surviving_leg} to COST (Break-Even). Risk eliminated!</i>\n"
+            f"• <b>Action:</b> ⚖️ <i>Surviving {surviving_leg} retains standard 25% Stop-Loss (No cost trail)</i>\n"
             f"━━━━━━━━━━━━━━━━━━━━"
         )
         self.notify(msg)

@@ -1,16 +1,33 @@
 {
     "trading_mode": "PAPER",
-    "symbol": "NIFTY",
-    "lot_size": 75,
-    "lots": 1,
+    "symbols": ["NIFTY", "SENSEX"],
+    "asset_configs": {
+        "NIFTY": {
+            "lot_size": 75,
+            "lots": 1,
+            "strike_step": 50,
+            "otm_percent": 0.006,
+            "wing_percent": 0.010,
+            "stop_loss_pct": 0.25,
+            "profit_target_rs": 3000.0,
+            "trail_winning_leg_to_cost": false,
+            "allowed_expiry_days": ["Tuesday", "Thursday", "Wednesday"]
+        },
+        "SENSEX": {
+            "lot_size": 20,
+            "lots": 1,
+            "strike_step": 100,
+            "otm_percent": 0.007,
+            "wing_percent": 0.012,
+            "stop_loss_pct": 0.25,
+            "profit_target_rs": 3000.0,
+            "trail_winning_leg_to_cost": false,
+            "allowed_expiry_days": ["Friday", "Thursday"]
+        }
+    },
     "entry_time": "09:25",
     "square_off_time": "13:30",
     "hard_cutoff_time": "15:15",
-    "otm_percent": 0.006,
-    "wing_percent": 0.010,
-    "stop_loss_pct": 0.25,
-    "profit_target_rs": 3000.0,
-    "trail_winning_leg_to_cost": true,
-    "allowed_expiry_days": ["Tuesday", "Thursday", "Wednesday"],
+    "trail_winning_leg_to_cost": false,
     "telegram_notifications": true
 }
