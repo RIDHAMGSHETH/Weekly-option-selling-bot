@@ -56,58 +56,68 @@ class TelegramAlerter:
 
     def send_bot_startup(self, mode, symbol, lots, capital):
         msg = (
-            f"🤖 <b>NIFTY 0-DTE QUANT BOT ONLINE</b>\n"
-            f"━━━━━━━━━━━━━━━━━━━━\n"
-            f"• <b>Status:</b> Active & Monitoring\n"
-            f"• <b>Mode:</b> <code>{mode}</code>\n"
-            f"• <b>Asset:</b> {symbol} (1 Lot = 75 Qty)\n"
-            f"• <b>Active Lots:</b> {lots} (Cap: ₹{capital:,.0f})\n"
-            f"• <b>Window:</b> 09:25 AM ➔ 13:30 PM\n"
-            f"• <b>Protection:</b> Asymmetric 25% SL + Outer Wings\n"
-            f"━━━━━━━━━━━━━━━━━━━━\n"
-            f"⏳ <i>Awaiting 09:25 AM Expiry Execution Window...</i>"
+            f"🟢 <b>[OPTION SELLING BOT] LIVE & READY</b>\n"
+            f"━━━━━━━━━━━━━━━━━━━━━━━━━━\n"
+            f"📌 <b>Index:</b> {symbol}\n"
+            f"💼 <b>Mode:</b> {mode} (Paper/Live)\n"
+            f"📊 <b>Position Size:</b> {lots} Lot\n"
+            f"⏰ <b>Entry Time:</b> 09:25 AM IST\n"
+            f"🏁 <b>Exit Time:</b> 01:30 PM IST (Theta Target)\n"
+            f"🎯 <b>Rules:</b> Independent 25% Stop-Loss per leg (No cost trail)\n"
+            f"━━━━━━━━━━━━━━━━━━━━━━━━━━\n"
+            f"⏳ <i>Waiting for 09:25 AM market entry...</i>"
         )
         self.notify(msg)
 
     def send_basket_entry(self, mode, spot, short_ce, ce_price, short_pe, pe_price, wing_ce, wing_pe, credit):
         msg = (
-            f"⚡ <b>0-DTE BASKET EXECUTED ({mode})</b>\n"
-            f"━━━━━━━━━━━━━━━━━━━━\n"
-            f"• <b>Nifty Spot:</b> <code>₹{spot:,.1f}</code>\n"
-            f"• <b>Short CE:</b> {short_ce} CE @ ₹{ce_price:.2f} (SL: ₹{ce_price*1.25:.2f})\n"
-            f"• <b>Short PE:</b> {short_pe} PE @ ₹{pe_price:.2f} (SL: ₹{pe_price*1.25:.2f})\n"
-            f"• <b>Hedge Wings:</b> {wing_ce} CE & {wing_pe} PE\n"
-            f"• <b>Net Premium Collected:</b> <b>+{credit:.2f} pts</b>\n"
-            f"• <b>Target Profit:</b> ₹3,000 | <b>Early Exit:</b> 13:30 PM\n"
-            f"━━━━━━━━━━━━━━━━━━━━\n"
-            f"🛡️ <i>Individual 25% Stop-Loss Orders Armed & Active</i>"
+            f"⚡ <b>[OPTION SELLING BOT] NEW TRADE ENTERED</b>\n"
+            f"━━━━━━━━━━━━━━━━━━━━━━━━━━\n"
+            f"📍 <b>Current Spot:</b> ₹{spot:,.1f}\n\n"
+            f"📉 <b>SELL CALL (CE):</b> {short_ce} CE\n"
+            f"   • Premium Sold: ₹{ce_price:.2f}\n"
+            f"   • Stop-Loss (25%): ₹{ce_price*1.25:.2f}\n\n"
+            f"📉 <b>SELL PUT (PE):</b> {short_pe} PE\n"
+            f"   • Premium Sold: ₹{pe_price:.2f}\n"
+            f"   • Stop-Loss (25%): ₹{pe_price*1.25:.2f}\n\n"
+            f"🛡️ <b>Hedge Wings (Margin Protection):</b>\n"
+            f"   • Buy {wing_ce} CE & {wing_pe} PE\n\n"
+            f"💰 <b>Total Net Credit Received:</b> +{credit:.2f} points\n"
+            f"🎯 <b>Target Profit:</b> ₹3,000 | <b>Time Exit:</b> 01:30 PM\n"
+            f"━━━━━━━━━━━━━━━━━━━━━━━━━━\n"
+            f"✅ <i>Monitoring ticks for Stop-Loss or Target.</i>"
         )
         self.notify(msg)
 
     def send_leg_stop_loss(self, stopped_leg, strike, entry_px, exit_px, surviving_leg, surviving_stk):
         loss_pts = exit_px - entry_px
         msg = (
-            f"🚨 <b>STOP-LOSS TRIGGERED: {stopped_leg}</b>\n"
-            f"━━━━━━━━━━━━━━━━━━━━\n"
-            f"• <b>Leg Cut:</b> {strike} {stopped_leg}\n"
-            f"• <b>Entry:</b> ₹{entry_px:.2f} ➔ <b>Exit:</b> ₹{exit_px:.2f} (-{loss_pts:.2f} pts)\n"
-            f"• <b>Surviving Leg:</b> {surviving_stk} {surviving_leg}\n"
-            f"• <b>Action:</b> ⚖️ <i>Surviving {surviving_leg} retains standard 25% Stop-Loss (No cost trail)</i>\n"
-            f"━━━━━━━━━━━━━━━━━━━━"
+            f"⚠️ <b>[OPTION SELLING BOT] STOP-LOSS HIT ({stopped_leg})</b>\n"
+            f"━━━━━━━━━━━━━━━━━━━━━━━━━━\n"
+            f"🔴 <b>Stopped Leg:</b> {strike} {stopped_leg}\n"
+            f"   • Sold at: ₹{entry_px:.2f}\n"
+            f"   • Exited at (25% SL): ₹{exit_px:.2f}\n"
+            f"   • Points Cut: -{loss_pts:.2f} pts\n\n"
+            f"🟢 <b>Surviving Leg:</b> {surviving_stk} {surviving_leg}\n"
+            f"   • Status: <b>Keeps original 25% SL</b> (Trailing to cost is disabled)\n"
+            f"━━━━━━━━━━━━━━━━━━━━━━━━━━\n"
+            f"🛡️ <i>Surviving leg continues monitoring until 01:30 PM.</i>"
         )
         self.notify(msg)
 
     def send_daily_journal(self, date, mode, exit_reason, net_pnl_rs, total_pts, cumulative_pnl):
-        status_icon = "🟢" if net_pnl_rs >= 0 else "🔴"
+        status_icon = "🎉 <b>PROFITABLE SESSION</b>" if net_pnl_rs >= 0 else "🛑 <b>LOSS SESSION</b>"
+        pnl_symbol = "+" if net_pnl_rs >= 0 else ""
         msg = (
-            f"{status_icon} <b>DAILY TRADING JOURNAL | {date}</b>\n"
-            f"━━━━━━━━━━━━━━━━━━━━\n"
-            f"• <b>Execution Mode:</b> <code>{mode}</code>\n"
-            f"• <b>Exit Trigger:</b> {exit_reason}\n"
-            f"• <b>Session Net Points:</b> {total_pts:+.2f} pts\n"
-            f"• <b>Session P&L:</b> <b>{net_pnl_rs:+,.2f} INR</b>\n"
-            f"• <b>Cumulative Balance:</b> <b>₹{cumulative_pnl:,.2f}</b>\n"
-            f"━━━━━━━━━━━━━━━━━━━━\n"
-            f"📁 <i>Trade details and tick metrics recorded to GitHub Journal & CSV.</i>"
+            f"📊 <b>[OPTION SELLING BOT] SESSION COMPLETE</b>\n"
+            f"━━━━━━━━━━━━━━━━━━━━━━━━━━\n"
+            f"📅 <b>Date:</b> {date}\n"
+            f"🔔 <b>Outcome:</b> {status_icon}\n"
+            f"🚪 <b>Exit Reason:</b> {exit_reason}\n"
+            f"📈 <b>Points Captured:</b> {total_pts:+.2f} pts\n"
+            f"💵 <b>Today's Net P&L:</b> <b>{pnl_symbol}₹{net_pnl_rs:,.2f}</b>\n"
+            f"💼 <b>Total Cumulative P&L:</b> ₹{cumulative_pnl:,.2f}\n"
+            f"━━━━━━━━━━━━━━━━━━━━━━━━━━\n"
+            f"📁 <i>Ledger recorded to GitHub. Bot now sleeping until tomorrow.</i>"
         )
         self.notify(msg)
