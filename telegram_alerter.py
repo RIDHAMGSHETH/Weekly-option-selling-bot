@@ -15,6 +15,17 @@ class TelegramAlerter:
         self.load_config()
 
     def load_config(self):
+        # 1. Environment variables (GitHub Actions Cloud mode)
+        env_token = os.environ.get("TELEGRAM_BOT_TOKEN")
+        env_chat = os.environ.get("TELEGRAM_CHAT_ID")
+        if env_token and env_chat:
+            self.bot_token = env_token.strip()
+            self.chat_id = str(env_chat).strip()
+            self.enabled = True
+            print("[+] Telegram Alerter Connected via Environment Variables.")
+            return
+
+        # 2. Local config fallback
         target = CONFIG_PATH if os.path.exists(CONFIG_PATH) else SHARED_CONFIG_PATH
         if os.path.exists(target):
             try:

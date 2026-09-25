@@ -1,0 +1,5 @@
+neo_api_client
+requests
+pandas
+pyotp
+colorama

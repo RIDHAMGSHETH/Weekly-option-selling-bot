@@ -100,9 +100,22 @@ class MultiIndexIronCondorBot:
 
         # Load master contract based on symbol
         if self.symbol == "NIFTY":
-            master_path = os.path.join(KOTAK_SDK_DIR, "today_nse_fo.csv")
+            master_path = os.path.join(BOT_DIR, "today_nse_fo.csv")
             if not os.path.exists(master_path):
-                master_path = os.path.join(BOT_DIR, "today_nse_fo.csv")
+                master_path = os.path.join(KOTAK_SDK_DIR, "today_nse_fo.csv")
+            if not os.path.exists(master_path):
+                try:
+                    print("[*] Downloading fresh NSE FO master database from Kotak Neo...")
+                    url = self.client.scrip_master(exchange_segment="nse_fo")
+                    if isinstance(url, dict):
+                        url = url.get("data", {}).get("filesPaths", [""])[0] if "data" in url else str(url)
+                    resp = requests.get(url, timeout=30)
+                    master_path = os.path.join(BOT_DIR, "today_nse_fo.csv")
+                    with open(master_path, "wb") as f:
+                        f.write(resp.content)
+                except Exception as e:
+                    print(f"[-] Could not fetch scrip master dynamically: {e}")
+
             print("[*] Loading NSE FO master database...")
             df = pd.read_csv(master_path, low_memory=False)
             df.columns = [c.strip().rstrip(';') for c in df.columns]
@@ -111,9 +124,22 @@ class MultiIndexIronCondorBot:
             self.spot_seg = "nse_cm"
             self.spot_tok = "Nifty 50"
         elif self.symbol == "SENSEX":
-            master_path = os.path.join(KOTAK_SDK_DIR, "today_bse_fo.csv")
+            master_path = os.path.join(BOT_DIR, "today_bse_fo.csv")
             if not os.path.exists(master_path):
-                master_path = os.path.join(BOT_DIR, "today_bse_fo.csv")
+                master_path = os.path.join(KOTAK_SDK_DIR, "today_bse_fo.csv")
+            if not os.path.exists(master_path):
+                try:
+                    print("[*] Downloading fresh BSE FO master database from Kotak Neo...")
+                    url = self.client.scrip_master(exchange_segment="bse_fo")
+                    if isinstance(url, dict):
+                        url = url.get("data", {}).get("filesPaths", [""])[0] if "data" in url else str(url)
+                    resp = requests.get(url, timeout=30)
+                    master_path = os.path.join(BOT_DIR, "today_bse_fo.csv")
+                    with open(master_path, "wb") as f:
+                        f.write(resp.content)
+                except Exception as e:
+                    print(f"[-] Could not fetch scrip master dynamically: {e}")
+
             print("[*] Loading BSE FO master database...")
             df = pd.read_csv(master_path, low_memory=False)
             df.columns = [c.strip().rstrip(';') for c in df.columns]

@@ -1,0 +1,58 @@
+name: "Dual Index Option Selling Bot (NIFTY & SENSEX)"
+
+on:
+  schedule:
+    # 03:40 UTC = 09:10 AM IST (Monday to Friday)
+    - cron: '40 3 * * 1-5'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  run-option-selling-bot:
+    runs-on: ubuntu-latest
+    timeout-minutes: 300
+
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: 'pip'
+
+      - name: Install Dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+
+      - name: Execute Dual Option Selling Session (09:15 - 13:35 IST)
+        env:
+          KOTAK_CONSUMER_KEY: ${{ secrets.KOTAK_CONSUMER_KEY }}
+          KOTAK_MOBILE_NUMBER: ${{ secrets.KOTAK_MOBILE_NUMBER }}
+          KOTAK_UCC: ${{ secrets.KOTAK_UCC }}
+          KOTAK_MPIN: ${{ secrets.KOTAK_MPIN }}
+          KOTAK_TOTP_SECRET: ${{ secrets.KOTAK_TOTP_SECRET }}
+          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+        run: |
+          python automated_option_selling_scheduler.py
+
+      - name: Commit & Push Journal & Ledgers to GitHub
+        if: always()
+        run: |
+          git config user.name "OptionSellingBot"
+          git config user.email "bot@optionselling.internal"
+          git add logs/TRADING_JOURNAL.md logs/trading_journal.csv || true
+          if git diff --staged --quiet; then
+            echo "No new trades or journal updates to commit."
+          else
+            git commit -m "Auto-update Trading Journal & Ledger for $(date +'%Y-%m-%d')"
+            git pull --rebase origin main || true
+            git push origin main
+          fi
