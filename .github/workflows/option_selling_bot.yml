@@ -2,8 +2,8 @@ name: "Dual Index Option Selling Bot (NIFTY & SENSEX)"
 
 on:
   schedule:
-    # 03:40 UTC = 09:10 AM IST (Monday to Friday)
-    - cron: '40 3 * * 1-5'
+    # 03:40 UTC = 09:10 AM IST (Thursday: NIFTY Expiry, Friday: SENSEX Expiry)
+    - cron: '40 3 * * 4,5'
   workflow_dispatch:
 
 permissions:
