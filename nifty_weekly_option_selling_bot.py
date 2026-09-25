@@ -172,10 +172,28 @@ class MultiIndexIronCondorBot:
         target_wing_ce  = round((spot_price + wing_offset) / step) * step
         target_wing_pe  = round((spot_price - wing_offset) / step) * step
 
-        exp_col = 'pExpiryDate' if 'pExpiryDate' in self.master_df.columns else 'lExpiryDate'
-        expiries = sorted(self.master_df[exp_col].dropna().unique())
-        nearest_exp = expiries[0]
-        sub = self.master_df[self.master_df[exp_col] == nearest_exp].copy()
+        # Extract true Expiry Date from pScripRefKey (e.g. NIFTY29SEP26... or SENSEX01OCT26...)
+        pattern = r'NIFTY(\d{2}[A-Z]{3}\d{2})' if self.symbol == "NIFTY" else r'SENSEX(\d{2}[A-Z]{3}\d{2})'
+        
+        self.master_df['CleanExpiry'] = self.master_df['pScripRefKey'].astype(str).apply(
+            lambda x: re.search(pattern, x).group(1) if re.search(pattern, x) else None
+        )
+        
+        valid_df = self.master_df.dropna(subset=['CleanExpiry']).copy()
+        valid_df['ExpDate'] = pd.to_datetime(valid_df['CleanExpiry'], format='%d%b%y')
+        
+        today_date = pd.to_datetime(datetime.now().strftime('%Y-%m-%d'))
+        upcoming = valid_df[valid_df['ExpDate'] >= today_date].sort_values('ExpDate')
+        
+        if upcoming.empty:
+            nearest_exp_str = valid_df.sort_values('ExpDate')['CleanExpiry'].iloc[0]
+            nearest_dt = valid_df.sort_values('ExpDate')['ExpDate'].iloc[0]
+        else:
+            nearest_exp_str = upcoming['CleanExpiry'].iloc[0]
+            nearest_dt = upcoming['ExpDate'].iloc[0]
+            
+        print(f"[+] Selected Nearest Expiry for {self.symbol}: {nearest_dt.strftime('%Y-%m-%d (%A)')} [Code: {nearest_exp_str}]")
+        sub = valid_df[valid_df['CleanExpiry'] == nearest_exp_str].copy()
 
         def find_token(strike, opt_type):
             for _, row in sub.iterrows():
@@ -197,6 +215,8 @@ class MultiIndexIronCondorBot:
 
         return {
             "spot": spot_price,
+            "expiry_date": nearest_dt.strftime('%Y-%m-%d'),
+            "expiry_weekday": nearest_dt.strftime('%A'),
             "short_ce": {"strike": target_short_ce, "token": ce_token, "trd_symbol": ce_trd},
             "short_pe": {"strike": target_short_pe, "token": pe_token, "trd_symbol": pe_trd},
             "wing_ce": {"strike": target_wing_ce, "token": w_ce_token, "trd_symbol": w_ce_trd},
@@ -204,9 +224,14 @@ class MultiIndexIronCondorBot:
         }
 
     def execute_basket_entry(self):
-        """Fetches live quotes and enters the margin-hedged Iron Condor."""
+        """Fetches live quotes and enters the margin-hedged Iron Condor strictly on 0-DTE Expiry."""
         spot = self.get_spot_price()
         contracts = self.resolve_contracts(spot)
+        
+        today_str = datetime.now().strftime("%Y-%m-%d")
+        if contracts.get("expiry_date") != today_str:
+            print(f"[!] SKIP: Today ({today_str}) is not the expiry date ({contracts.get('expiry_date')}) for {self.symbol}. 0-DTE Condors execute strictly on Expiry Day.")
+            return False
 
         tokens_to_fetch = []
         for leg in ["short_ce", "short_pe", "wing_ce", "wing_pe"]:
