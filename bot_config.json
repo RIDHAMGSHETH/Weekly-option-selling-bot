@@ -11,7 +11,7 @@
             "stop_loss_pct": 0.25,
             "profit_target_rs": 3000.0,
             "trail_winning_leg_to_cost": false,
-            "allowed_expiry_days": ["Tuesday"]
+            "allowed_expiry_days": ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday"]
         },
         "SENSEX": {
             "lot_size": 20,
@@ -22,7 +22,7 @@
             "stop_loss_pct": 0.25,
             "profit_target_rs": 3000.0,
             "trail_winning_leg_to_cost": false,
-            "allowed_expiry_days": ["Thursday"]
+            "allowed_expiry_days": ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday"]
         }
     },
     "entry_time": "09:25",

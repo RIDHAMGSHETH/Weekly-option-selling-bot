@@ -115,21 +115,17 @@ class DualIndexOptionSellingScheduler:
             # 4. Entry Window: Trigger exactly at 09:25 AM
             entry_time_obj = dtime(9, 25)
             square_off_time_obj = dtime(13, 30)
-            today_weekday_name = now.strftime("%A")
 
             for sym, bot in self.bots.items():
-                allowed_days = bot.config.get("allowed_expiry_days", [])
-                if allowed_days and today_weekday_name not in allowed_days:
-                    # Skip if current day is not configured for this index
-                    continue
-
                 if now_time >= entry_time_obj and not self.entered_today[sym] and not self.squared_off_today[sym]:
-                    print(f"\n[{now_str}] Entry Window Reached (>= 09:25 AM on {today_weekday_name}). Executing {sym} Basket...")
-                    try:
-                        bot.execute_basket_entry()
+                    # Execute entry (bot internally verifies if today is the exact contract expiry date)
+                    success = bot.execute_basket_entry()
+                    if success:
+                        print(f"\n[{now_str}] Executed 0-DTE {sym} Iron Condor Basket for today's expiry!")
                         self.entered_today[sym] = True
-                    except Exception as e:
-                        print(f"[-] {sym} Basket entry error: {e}")
+                    else:
+                        # Today is not an expiry day for this symbol, so mark checked
+                        self.entered_today[sym] = True
 
             # 5. Position Active Monitoring & Square-Off
             any_squared_off = False

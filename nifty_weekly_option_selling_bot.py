@@ -293,6 +293,7 @@ class MultiIndexIronCondorBot:
             wing_pe=contracts['wing_pe']['strike'],
             credit=net_credit
         )
+        return True
 
     def monitor_tick(self):
         """
