@@ -68,12 +68,14 @@ class MultiIndexIronCondorBot:
             "lot_size": 75 if self.symbol == "NIFTY" else 20,
             "lots": 1,
             "strike_step": 50 if self.symbol == "NIFTY" else 100,
-            "otm_percent": 0.006 if self.symbol == "NIFTY" else 0.007,
-            "wing_percent": 0.010 if self.symbol == "NIFTY" else 0.012,
-            "stop_loss_pct": 0.25,
+            "otm_percent": 0.010,
+            "wing_percent": 0.015,
+            "stop_loss_pct": None,
+            "roll_check_time": "11:30",
+            "roll_decay_threshold": 0.75,
+            "delta_defense_threshold": 0.0085,
             "profit_target_rs": 3000.0,
-            "trail_winning_leg_to_cost": False,
-            "allowed_expiry_days": ["Tuesday", "Thursday", "Wednesday"] if self.symbol == "NIFTY" else ["Friday", "Thursday"]
+            "allowed_expiry_days": ["Thursday"] if self.symbol == "NIFTY" else ["Friday"]
         })
 
         self.config = {
@@ -82,15 +84,17 @@ class MultiIndexIronCondorBot:
             "lot_size": default_asset.get("lot_size", 75 if self.symbol == "NIFTY" else 20),
             "lots": default_asset.get("lots", 1),
             "strike_step": default_asset.get("strike_step", 50 if self.symbol == "NIFTY" else 100),
-            "otm_percent": default_asset.get("otm_percent", 0.006),
-            "wing_percent": default_asset.get("wing_percent", 0.010),
-            "stop_loss_pct": default_asset.get("stop_loss_pct", 0.25),
+            "otm_percent": default_asset.get("otm_percent", 0.010),
+            "wing_percent": default_asset.get("wing_percent", 0.015),
+            "stop_loss_pct": default_asset.get("stop_loss_pct", None),
+            "roll_check_time": default_asset.get("roll_check_time", "11:30"),
+            "roll_decay_threshold": default_asset.get("roll_decay_threshold", 0.75),
+            "delta_defense_threshold": default_asset.get("delta_defense_threshold", 0.0085),
             "profit_target_rs": default_asset.get("profit_target_rs", 3000.0),
-            "trail_winning_leg_to_cost": False,  # Explicitly disabled per user rule
             "entry_time": self.full_config.get("entry_time", "09:25"),
             "square_off_time": self.full_config.get("square_off_time", "13:30"),
             "hard_cutoff_time": self.full_config.get("hard_cutoff_time", "15:15"),
-            "allowed_expiry_days": default_asset.get("allowed_expiry_days", ["Tuesday", "Thursday", "Wednesday"])
+            "allowed_expiry_days": default_asset.get("allowed_expiry_days", ["Thursday"] if self.symbol == "NIFTY" else ["Friday"])
         }
 
     def initialize_market_connection(self):

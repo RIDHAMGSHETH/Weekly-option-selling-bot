@@ -105,11 +105,36 @@ class TelegramAlerter:
         )
         self.notify(msg)
 
+    def send_roll_alert(self, symbol, old_strike, new_strike, leg_type, decay_pct, fresh_credit_pts):
+        msg = (
+            f"🔄 <b>[{symbol} 0-DTE HYBRID] 11:30 AM LEG ROLLED</b>\n"
+            f"━━━━━━━━━━━━━━━━━━━━━━━━━━\n"
+            f"🎯 <b>Unchallenged Leg:</b> {old_strike} {leg_type}\n"
+            f"📉 <b>Decay Harvested:</b> {decay_pct:.1f}% Premium Crushed\n"
+            f"⏩ <b>Rolled Inward To:</b> {new_strike} {leg_type}\n"
+            f"💰 <b>Fresh Credit Collected:</b> +{fresh_credit_pts:.2f} pts\n"
+            f"━━━━━━━━━━━━━━━━━━━━━━━━━━\n"
+            f"🛡️ <i>Both wings locked. Decaying into 01:30 PM target.</i>"
+        )
+        self.notify(msg)
+
+    def send_delta_defense_alert(self, symbol, threatened_leg, strike, spot_move_pct, action):
+        msg = (
+            f"🚨 <b>[{symbol} 0-DTE HYBRID] 0.85% DELTA SHIELD FIRED</b>\n"
+            f"━━━━━━━━━━━━━━━━━━━━━━━━━━\n"
+            f"⚠️ <b>Threatened Leg:</b> {strike} {threatened_leg}\n"
+            f"📊 <b>Spot Movement:</b> {spot_move_pct:+.2f}%\n"
+            f"🛡️ <b>Action Executed:</b> {action}\n"
+            f"━━━━━━━━━━━━━━━━━━━━━━━━━━\n"
+            f"🔒 <i>Capital shielded. Risk locked by outer wings.</i>"
+        )
+        self.notify(msg)
+
     def send_daily_journal(self, date, mode, exit_reason, net_pnl_rs, total_pts, cumulative_pnl):
         status_icon = "🎉 <b>PROFITABLE SESSION</b>" if net_pnl_rs >= 0 else "🛑 <b>LOSS SESSION</b>"
         pnl_symbol = "+" if net_pnl_rs >= 0 else ""
         msg = (
-            f"📊 <b>[OPTION SELLING BOT] SESSION COMPLETE</b>\n"
+            f"📊 <b>[0-DTE HYBRID MASTER] SESSION COMPLETE</b>\n"
             f"━━━━━━━━━━━━━━━━━━━━━━━━━━\n"
             f"📅 <b>Date:</b> {date}\n"
             f"🔔 <b>Outcome:</b> {status_icon}\n"
@@ -121,3 +146,4 @@ class TelegramAlerter:
             f"📁 <i>Ledger recorded to GitHub. Bot now sleeping until tomorrow.</i>"
         )
         self.notify(msg)
+

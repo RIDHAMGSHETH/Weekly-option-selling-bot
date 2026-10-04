@@ -1,30 +1,48 @@
-# Weekly Option Selling Bot (Nifty 0-DTE & Weekly Iron Condor)
+# 0-DTE Hybrid Master Option Selling Bot (NIFTY & BSE SENSEX)
 
-Autonomous quantitative options selling engine executed on Kotak Neo API with automated holiday scheduling, Telegram notifications, and GitHub trade journaling.
-
-## Strategy Architecture
-- **Underlying**: NIFTY 50 Index Options
-- **Leg Structure**:
-  - **Short Strangle**: $\pm 0.6\%$ OTM Strikes (Short CE + Short PE)
-  - **Protective Wings**: $\pm 1.0\%$ OTM Strikes (Long CE + Long PE to unlock 60% margin benefit)
-- **Execution Window**:
-  - Entry: Exactly at **09:25 AM IST**
-  - Exit: **13:30 PM IST** (capturing peak morning theta decay) or earlier on target
-- **Risk Management**:
-  - **25% Stop-Loss** per leg
-  - **Trailing Cost Lock**: If one leg hits SL, the surviving profitable leg trails to entry cost (guaranteeing zero further risk)
-  - **Milestone Target Lock**: $+₹3,000$ per lot early exit
+Autonomous quantitative options selling engine executed on Kotak Neo API with automated holiday scheduling, dynamic 11:30 AM rolling, 0.85% delta defense, Telegram notifications, and GitHub trade journaling.
 
 ---
 
-## Autonomous Holiday & Session Scheduler
-Integrated with the official **2026 National Stock Exchange (NSE) Holiday Master**:
-- **Weekdays Only**: Automatically sleeps on Saturdays and Sundays.
-- **Holiday Filter**: Skips all 20 official NSE market holidays (e.g., Ganesh Chaturthi, Diwali, Good Friday, Holi, Republic Day).
-- **Auto-Sync to GitHub**: Automatically commits and pushes the [`logs/TRADING_JOURNAL.md`](file:///C:/Users/Ridham/.gemini/antigravity-ide/scratch/Weekly-option-selling-bot/logs/TRADING_JOURNAL.md) and trade ledger CSV to GitHub upon daily square-off.
+## 🎯 Strategy Architecture (Hybrid Master)
+- **Indices & Expiries**:
+  - **NIFTY 50 (NSE)**: Every Thursday (holiday-shifted to Wednesday when applicable)
+  - **BSE SENSEX (BSE)**: Every Friday (holiday-shifted to Thursday when applicable)
+- **Leg Construction (09:25 AM IST Entry)**:
+  - **Short Strangle**: $\pm 1.0\%$ OTM Strikes (Short CE + Short PE)
+  - **Protective Wings**: $\pm 1.5\%$ OTM Strikes (Long CE + Long PE, margin reduction + hard loss limit)
+- **Execution & Exits**:
+  - **Square-Off Window**: 13:30 PM IST (capturing peak morning theta decay)
+  - **Target Milestone**: $+₹3,000$ per lot early exit
 
 ---
 
-## 1-Click Launchers
-- **Start Autonomous Scheduler**: `START_OPTION_SELLING_SCHEDULER.bat`
-- **Manual Verification Runner**: `RUN_NIFTY_0DTE_BOT.bat`
+## 🛡️ Risk Management & Dynamic Adjustments
+1. **No Tight Stop-Loss Whipsaws**:
+   - Replaced narrow 25% SL (which stopped out on normal intraday retracements) with outer protective wings.
+2. **Dynamic 11:30 AM Roll**:
+   - At 11:30 AM, if the unchallenged leg has decayed $\ge 75\%$, it is closed and rolled inward to capture fresh credit.
+3. **Emergency 0.85% Delta Shield**:
+   - If intraday spot moves $\ge 0.85\%$ towards a short strike, the threatened side is de-risked immediately.
+4. **Hard Mathematical Loss Cap**:
+   - Maximum loss is mathematically capped by wing width minus credit received.
+
+---
+
+## 📲 Telegram Notifications
+Instant Telegram alerts sent on:
+- **Bot Startup & Connection Status**
+- **09:25 AM Basket Entry** (Strikes, Spot, Net Credit, Fixed Boundaries)
+- **11:30 AM Leg Roll** (Harvested Decay %, Inward Strike, Fresh Credit)
+- **0.85% Delta Shield Trigger** (Threatened Side, Spot Shift %, Action Taken)
+- **13:30 PM Session Close** (Captured Points, Net P&L ₹, Cumulative P&L)
+
+Telegram configuration is loaded from [`telegram_config.json`](telegram_config.json) or environment variables:
+- `telegram_bot_token`
+- `telegram_chat_id`
+
+---
+
+## 🚀 Desktop Launchers
+- **Real-Time HUD Monitor**: `C:\Users\Ridham\OneDrive\Desktop\LIVE_HYBRID_EXPIRY_TERMINAL.bat`
+- **Background Scheduler**: `automated_option_selling_scheduler.py`
