@@ -75,7 +75,7 @@ class MultiIndexIronCondorBot:
             "roll_decay_threshold": 0.75,
             "delta_defense_threshold": 0.0085,
             "profit_target_rs": 3000.0,
-            "allowed_expiry_days": ["Thursday"] if self.symbol == "NIFTY" else ["Friday"]
+            "allowed_expiry_days": ["Tuesday"] if self.symbol == "NIFTY" else ["Thursday"]
         })
 
         self.config = {
@@ -94,7 +94,7 @@ class MultiIndexIronCondorBot:
             "entry_time": self.full_config.get("entry_time", "09:25"),
             "square_off_time": self.full_config.get("square_off_time", "13:30"),
             "hard_cutoff_time": self.full_config.get("hard_cutoff_time", "15:15"),
-            "allowed_expiry_days": default_asset.get("allowed_expiry_days", ["Thursday"] if self.symbol == "NIFTY" else ["Friday"])
+            "allowed_expiry_days": default_asset.get("allowed_expiry_days", ["Tuesday"] if self.symbol == "NIFTY" else ["Thursday"])
         }
 
     def initialize_market_connection(self):

@@ -122,10 +122,10 @@ def get_market_status(dt=None):
 def get_expiry_date_for_week(year, week_num, symbol="NIFTY"):
     """
     Computes holiday-adjusted expiry date for a given ISO week.
-    Standard: NIFTY = Thursday (weekday 3), SENSEX = Friday (weekday 4).
+    Standard: NIFTY = Tuesday (weekday 1), SENSEX = Thursday (weekday 3).
     If that day is an NSE holiday, shifts backward to preceding trading day.
     """
-    target_weekday = 3 if symbol.upper() == "NIFTY" else 4
+    target_weekday = 1 if symbol.upper() == "NIFTY" else 3
     try:
         candidate = datetime.strptime(f"{year}-W{week_num:02d}-{target_weekday+1}", "%Y-W%W-%w").date()
     except Exception:
@@ -148,6 +148,7 @@ def is_expiry_day(dt=None, symbol="NIFTY"):
     """
     Strict Verification: Returns (is_expiry: bool, next_expiry_date: str, details: str).
     Ensures execution occurs ONLY AND ONLY on the official expiry date.
+    NIFTY = Tuesday (weekday 1) | SENSEX = Thursday (weekday 3)
     """
     from datetime import timedelta
     if dt is None:
@@ -157,7 +158,8 @@ def is_expiry_day(dt=None, symbol="NIFTY"):
     else:
         check_date = dt
 
-    target_weekday = 3 if symbol.upper() == "NIFTY" else 4 # Thu for Nifty, Fri for Sensex
+    target_weekday = 1 if symbol.upper() == "NIFTY" else 3 # Tue for Nifty, Thu for Sensex
+
 
     # Check candidates for the current week and previous/next week boundaries
     # Find the expiry date for current ISO week

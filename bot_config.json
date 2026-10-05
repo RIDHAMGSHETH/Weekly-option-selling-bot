@@ -14,7 +14,7 @@
             "roll_decay_threshold": 0.75,
             "delta_defense_threshold": 0.0085,
             "profit_target_rs": 3000.0,
-            "allowed_expiry_days": ["Thursday"]
+            "allowed_expiry_days": ["Tuesday"]
         },
         "SENSEX": {
             "lot_size": 20,
@@ -27,7 +27,7 @@
             "roll_decay_threshold": 0.75,
             "delta_defense_threshold": 0.0085,
             "profit_target_rs": 3000.0,
-            "allowed_expiry_days": ["Friday"]
+            "allowed_expiry_days": ["Thursday"]
         }
     },
     "entry_time": "09:25",
