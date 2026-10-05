@@ -24,12 +24,10 @@ import time
 import subprocess
 from datetime import datetime, time as dtime
 
-BOT_DIR = os.path.dirname(__file__)
-KOTAK_DIR = r"C:\Users\Ridham\.gemini\antigravity-ide\scratch\Kotak-neo-api-v2"
+BOT_DIR = os.path.dirname(os.path.abspath(__file__))
+if BOT_DIR not in sys.path:
+    sys.path.insert(0, BOT_DIR)
 
-for p in [BOT_DIR, KOTAK_DIR]:
-    if p not in sys.path:
-        sys.path.insert(0, p)
 
 from trading_calendar import get_market_status, is_weekend, HOLIDAYS_2026
 from nifty_weekly_option_selling_bot import MultiIndexIronCondorBot

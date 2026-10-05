@@ -11,27 +11,25 @@ def _force_ipv4(*args, **kwargs):
 socket.getaddrinfo = _force_ipv4
 
 BOT_DIR = os.path.dirname(os.path.abspath(__file__))
-KOTAK_SDK_DIR = r"C:\Users\Ridham\.gemini\antigravity-ide\scratch\Kotak-neo-api-v2"
-for p in [BOT_DIR, KOTAK_SDK_DIR]:
-    if p not in sys.path:
-        sys.path.insert(0, p)
+if BOT_DIR not in sys.path:
+    sys.path.insert(0, BOT_DIR)
 
 from neo_api_client import NeoAPI
 
 CONFIG_PATH = os.path.join(BOT_DIR, "kotak_config.json")
 SESSION_CACHE_PATH = os.path.join(BOT_DIR, "shared_session.json")
-SHARED_FALLBACK_CONFIG = os.path.join(KOTAK_SDK_DIR, "kotak_config.json")
+
 
 def load_config():
     """Loads config from local config or environment variables (GitHub Actions secrets)."""
     cfg = {}
-    target_config = CONFIG_PATH if os.path.exists(CONFIG_PATH) else SHARED_FALLBACK_CONFIG
-    if os.path.exists(target_config):
+    if os.path.exists(CONFIG_PATH):
         try:
-            with open(target_config, "r") as f:
+            with open(CONFIG_PATH, "r") as f:
                 cfg = json.load(f)
         except Exception:
             pass
+
 
     return {
         "consumer_key": os.environ.get("KOTAK_CONSUMER_KEY", cfg.get("consumer_key", "")),

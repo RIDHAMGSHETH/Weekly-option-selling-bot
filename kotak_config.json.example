@@ -1,0 +1,9 @@
+{
+    "consumer_key": "YOUR_KOTAK_CONSUMER_KEY",
+    "mobile_number": "+91XXXXXXXXXX",
+    "ucc": "YOUR_UCC",
+    "mpin": "YOUR_MPIN",
+    "totp_secret": "YOUR_BASE32_TOTP_KEY",
+    "environment": "prod",
+    "enabled": false
+}

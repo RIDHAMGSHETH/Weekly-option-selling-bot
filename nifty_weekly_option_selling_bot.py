@@ -28,10 +28,9 @@ from datetime import datetime, time as dtime
 import pandas as pd
 
 BOT_DIR = os.path.dirname(os.path.abspath(__file__))
-KOTAK_SDK_DIR = r"C:\Users\Ridham\.gemini\antigravity-ide\scratch\Kotak-neo-api-v2"
-for p in [BOT_DIR, KOTAK_SDK_DIR]:
-    if p not in sys.path:
-        sys.path.insert(0, p)
+if BOT_DIR not in sys.path:
+    sys.path.insert(0, BOT_DIR)
+
 
 from telegram_alerter import TelegramAlerter
 from journaler import TradeJournaler
