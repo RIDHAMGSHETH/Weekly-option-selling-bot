@@ -119,6 +119,91 @@ def get_market_status(dt=None):
         'reason': " | ".join(reasons) if reasons else "Market Active"
     }
 
+def get_expiry_date_for_week(year, week_num, symbol="NIFTY"):
+    """
+    Computes holiday-adjusted expiry date for a given ISO week.
+    Standard: NIFTY = Thursday (weekday 3), SENSEX = Friday (weekday 4).
+    If that day is an NSE holiday, shifts backward to preceding trading day.
+    """
+    target_weekday = 3 if symbol.upper() == "NIFTY" else 4
+    try:
+        candidate = datetime.strptime(f"{year}-W{week_num:02d}-{target_weekday+1}", "%Y-W%W-%w").date()
+    except Exception:
+        # Fallback date calculation
+        jan1 = date(year, 1, 1)
+        start_day = jan1 + timedelta(days=(week_num - 1) * 7)
+        days_ahead = (target_weekday - start_day.weekday()) % 7
+        candidate = start_day + timedelta(days=days_ahead)
+
+    # Shift backward if closed
+    while True:
+        c_str = candidate.strftime("%Y-%m-%d")
+        if candidate.weekday() in (5, 6) or (c_str in HOLIDAYS_2026 and HOLIDAYS_2026[c_str].get("nse_closed")):
+            candidate -= timedelta(days=1)
+        else:
+            break
+    return candidate
+
+def is_expiry_day(dt=None, symbol="NIFTY"):
+    """
+    Strict Verification: Returns (is_expiry: bool, next_expiry_date: str, details: str).
+    Ensures execution occurs ONLY AND ONLY on the official expiry date.
+    """
+    from datetime import timedelta
+    if dt is None:
+        dt = datetime.now()
+    if isinstance(dt, datetime):
+        check_date = dt.date()
+    else:
+        check_date = dt
+
+    target_weekday = 3 if symbol.upper() == "NIFTY" else 4 # Thu for Nifty, Fri for Sensex
+
+    # Check candidates for the current week and previous/next week boundaries
+    # Find the expiry date for current ISO week
+    iso_year, iso_week, _ = check_date.isocalendar()
+
+    # Calculate actual expiry date for this week:
+    # Start at target weekday of current week
+    day_diff = target_weekday - check_date.weekday()
+    candidate = check_date + timedelta(days=day_diff)
+
+    # If candidate is a holiday or weekend, walk back to previous trading day
+    while True:
+        c_str = candidate.strftime("%Y-%m-%d")
+        if candidate.weekday() in (5, 6) or (c_str in HOLIDAYS_2026 and HOLIDAYS_2026[c_str].get("nse_closed")):
+            candidate -= timedelta(days=1)
+        else:
+            break
+
+    is_exp = (check_date == candidate)
+    
+    # If today already passed this week's expiry or today is not expiry, compute next upcoming expiry
+    if check_date > candidate:
+        # Next week's expiry
+        next_cand = candidate + timedelta(days=7)
+        while True:
+            c_str = next_cand.strftime("%Y-%m-%d")
+            if next_cand.weekday() in (5, 6) or (c_str in HOLIDAYS_2026 and HOLIDAYS_2026[c_str].get("nse_closed")):
+                next_cand -= timedelta(days=1)
+            else:
+                break
+        next_exp_date = next_cand
+    elif check_date < candidate:
+        next_exp_date = candidate
+    else:
+        next_exp_date = candidate
+
+    return {
+        "is_expiry": is_exp,
+        "today_date": check_date.strftime("%Y-%m-%d"),
+        "today_weekday": check_date.strftime("%A"),
+        "expiry_date": candidate.strftime("%Y-%m-%d"),
+        "next_expiry_date": next_exp_date.strftime("%Y-%m-%d (%A)"),
+        "symbol": symbol.upper()
+    }
+
+
 if __name__ == "__main__":
     status = get_market_status()
     print("Market Status Right Now:")

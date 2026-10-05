@@ -233,8 +233,10 @@ class MultiIndexIronCondorBot:
         contracts = self.resolve_contracts(spot)
         
         today_str = datetime.now().strftime("%Y-%m-%d")
+        today_name = datetime.now().strftime("%A")
         if contracts.get("expiry_date") != today_str:
-            print(f"[!] SKIP: Today ({today_str}) is not the expiry date ({contracts.get('expiry_date')}) for {self.symbol}. 0-DTE Condors execute strictly on Expiry Day.")
+            print(f"\n[⚠️ WARNING] NON-EXPIRY DAY: Today ({today_str}, {today_name}) is NOT the official expiry date for {self.symbol} (Target Expiry: {contracts.get('expiry_date')}).")
+            print(f"[🛡️ NO TRADES] Strict rule enforced: 0-DTE Iron Condors execute ONLY AND ONLY on Expiry Days. 0 orders sent.")
             return False
 
         tokens_to_fetch = []

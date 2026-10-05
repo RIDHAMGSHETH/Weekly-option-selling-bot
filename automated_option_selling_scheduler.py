@@ -124,7 +124,8 @@ class DualIndexOptionSellingScheduler:
                         print(f"\n[{now_str}] Executed 0-DTE {sym} Iron Condor Basket for today's expiry!")
                         self.entered_today[sym] = True
                     else:
-                        # Today is not an expiry day for this symbol, so mark checked
+                        # Today is not an expiry day for this symbol, so mark checked and stay in no-trades mode
+                        print(f"[{now_str}] [LOCK] {sym} standing down today: 0 trades placed.")
                         self.entered_today[sym] = True
 
             # 5. Position Active Monitoring & Square-Off
