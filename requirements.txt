@@ -1,5 +1,4 @@
-neo_api_client
-requests
-pandas
-pyotp
-colorama
+flask>=3.0.0
+requests>=2.31.0
+pytz>=2024.1
+pandas>=2.0.0
